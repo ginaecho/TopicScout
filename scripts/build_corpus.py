@@ -13,6 +13,21 @@ def slug(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")[:90]
 
 
+def category_tokens(category: str) -> list[str]:
+    stop = {
+        "and", "or", "the", "of", "for", "in", "to", "by", "with", "on", "a", "an",
+        "that", "this", "their", "other", "across", "through", "while", "when",
+        "which", "from", "into", "under", "over", "using", "use", "used",
+        "technical", "documented", "relevant", "including", "should", "include",
+        "evidence", "context", "quality", "details", "analysis", "assessment",
+    }
+    return [
+        token
+        for token in re.findall(r"[a-z0-9]+", category.lower())
+        if len(token) >= 4 and token not in stop
+    ][:12]
+
+
 def classify(paper: dict, config: dict) -> str:
     if paper.get("primary_category") not in (None, "", "unclassified"):
         return paper["primary_category"]
@@ -20,7 +35,7 @@ def classify(paper: dict, config: dict) -> str:
         [paper.get("title", ""), paper.get("abstract", ""), *paper.get("topics", [])]
     ).lower()
     scores = {
-        category: sum(token in text for token in category.lower().split())
+        category: sum(token in text for token in category_tokens(category))
         for category in config["taxonomy"]
     }
     return max(config["taxonomy"], key=lambda category: (scores[category], -config["taxonomy"].index(category)))

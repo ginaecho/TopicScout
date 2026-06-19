@@ -10,6 +10,7 @@ skill instructions, searches scholarly graphs, maintains a deduplicated paper co
 - an interactive paper association graph
 - a searchable Karpathy-style wiki
 - evidence-backed research gaps and opportunities
+- scout token and spend reporting
 - task manifests for one agent, Claw agents, or subagent swarms
 
 ## Quick Start
@@ -80,7 +81,7 @@ Then inspect:
 - `skills/analyze-research-gaps/SKILL.md`: generated opportunity-analysis procedure
 - `data/papers.json`: normalized scholarly corpus
 - `reports/research_report.md`: generated synthesis
-- `topic-dashboard.html`: dashboard, graph, wiki, and opportunities
+- `topic-dashboard.html`: dashboard, graph, wiki, candidate queue, opportunities, and scout cost totals
 - `scout_cron_payload.txt`: generated prompt for a scheduled Claw scout
 
 ## Intent Intake
@@ -93,6 +94,8 @@ Then inspect:
 - dashboard sections;
 - targeted and adversarial search queries;
 - a citation-graph scouting strategy.
+- a token and money cost record for each scout run.
+- a token and money cost record for each scout run.
 
 Interactive setup then asks only for publication years, cadence, and approval policy. Non-interactive
 flags such as `--goal`, `--include`, and `--taxonomy` are optional constraints on the LLM.

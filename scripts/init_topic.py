@@ -105,6 +105,7 @@ description: Scout, review, and ingest papers for {config['topic']}. Use for sch
 
 Search within {config['years']['from']}-{config['years']['to']}.
 Prioritize: {", ".join(config['evidence_types'])}.
+Report token_count and money_cost_usd for every scouting run, even when the cost is zero.
 
 ## Topic-Specific Scouting Strategy
 
@@ -195,6 +196,7 @@ def render_scout_prompt(config: dict) -> str:
    - run `make dashboard`;
    - commit and report only the accepted additions.
 9. If no paper is accepted, do not rewrite tracked artifacts and return no update.
+10. Include token_count and money_cost_usd in every scouting report and acceptance record.
 
 Topic-specific strategy:
 {strategy}

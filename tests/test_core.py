@@ -11,6 +11,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from build_corpus import classify
 from build_dashboard import graph_data, wiki_data
+from costs import zero_cost
 from init_topic import build_queries, parse_years, slugify
 from intent_refiner import refine_intent, refine_intent_codex
 from paper_graph import Candidate, relevance
@@ -143,6 +144,250 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(model, "test-model")
         self.assertEqual(captured["payload"]["text"]["format"]["type"], "json_schema")
         self.assertFalse(captured["payload"]["store"])
+
+    def test_cost_block_defaults_to_zero_for_openalex_scouting(self):
+        cost = zero_cost()
+        self.assertEqual(cost["token_count"], 0)
+        self.assertEqual(cost["money_cost_usd"], 0.0)
+        self.assertEqual(cost["currency"], "USD")
+
+    def test_dashboard_payload_includes_candidates(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "data").mkdir(parents=True, exist_ok=True)
+            (root / "reports").mkdir(parents=True, exist_ok=True)
+            (root / "topic.json").write_text(
+                json.dumps(
+                    {
+                        "topic": "Detecting Discriminatory AI in Hiring",
+                        "goal": "Track bias detection methods",
+                        "audience": "researchers",
+                        "taxonomy": ["methods", "systems"],
+                        "include": ["hiring", "fairness"],
+                        "exclude": [],
+                        "years": {"from": 2023, "to": 2026},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (root / "data" / "papers.json").write_text(
+                json.dumps({"papers": [], "scout_runs": []}),
+                encoding="utf-8",
+            )
+            (root / "data" / "candidates.json").write_text(
+                json.dumps(
+                    {
+                        "generated_at": "2026-06-13T00:00:00Z",
+                        "cost": {"token_count": 12, "money_cost_usd": 0.03, "currency": "USD"},
+                        "queries": ["query"],
+                        "candidates": [
+                            {
+                                "id": "openalex:1",
+                                "title": "Candidate One",
+                                "year": 2025,
+                                "url": "https://example.com",
+                                "citation_count": 4,
+                                "relevance_score": 1.5,
+                                "relevance_reason": "example",
+                                "topics": ["fairness"],
+                                "discovered_via": ["query:test"],
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            env = dict(os.environ, TOPIC_SCOUT_ROOT=directory)
+            subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "build_dashboard.py")],
+                check=True,
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+            payload = json.loads((root / "data" / "dashboard.json").read_text())
+            self.assertEqual(payload["candidate_count"], 1)
+            self.assertEqual(payload["candidate_cost"]["token_count"], 12)
+            self.assertEqual(payload["candidates"][0]["title"], "Candidate One")
+            self.assertTrue(any(page["type"] == "candidate" for page in payload["wiki"]["pages"]))
+
+    def test_dashboard_uses_candidates_for_visuals_when_no_papers_are_accepted(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "data").mkdir(parents=True, exist_ok=True)
+            (root / "reports").mkdir(parents=True, exist_ok=True)
+            (root / "topic.json").write_text(
+                json.dumps(
+                    {
+                        "topic": "Detecting Discriminatory AI in Hiring",
+                        "goal": "Track bias detection methods",
+                        "audience": "researchers",
+                        "taxonomy": ["methods", "systems"],
+                        "include": ["hiring", "fairness"],
+                        "exclude": [],
+                        "years": {"from": 2023, "to": 2026},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (root / "data" / "papers.json").write_text(
+                json.dumps({"papers": [], "scout_runs": []}),
+                encoding="utf-8",
+            )
+            (root / "data" / "candidates.json").write_text(
+                json.dumps(
+                    {
+                        "generated_at": "2026-06-13T00:00:00Z",
+                        "cost": {"token_count": 12, "money_cost_usd": 0.03, "currency": "USD"},
+                        "queries": ["query"],
+                        "candidates": [
+                            {
+                                "id": "openalex:1",
+                                "title": "Candidate One",
+                                "year": 2025,
+                                "url": "https://example.com",
+                                "citation_count": 4,
+                                "relevance_score": 1.5,
+                                "relevance_reason": "example",
+                                "topics": ["fairness"],
+                                "discovered_via": ["query:test"],
+                                "abstract": "fairness in hiring systems",
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            env = dict(os.environ, TOPIC_SCOUT_ROOT=directory)
+            subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "build_dashboard.py")],
+                check=True,
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+            payload = json.loads((root / "data" / "dashboard.json").read_text())
+            self.assertEqual(payload["visualized_paper_count"], 1)
+            self.assertEqual(payload["visualized_source"], "discovered candidates")
+            self.assertGreater(len(payload["graph"]["nodes"]), 0)
+            self.assertGreater(payload["categories"][0]["count"] + payload["categories"][1]["count"], 0)
+
+    def test_dashboard_records_category_history_for_scout_runs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "data").mkdir(parents=True, exist_ok=True)
+            (root / "reports").mkdir(parents=True, exist_ok=True)
+            (root / "topic.json").write_text(
+                json.dumps(
+                    {
+                        "topic": "Detecting Discriminatory AI in Hiring",
+                        "goal": "Track bias detection methods",
+                        "audience": "researchers",
+                        "taxonomy": ["methods", "systems"],
+                        "include": ["hiring", "fairness"],
+                        "exclude": [],
+                        "years": {"from": 2023, "to": 2026},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (root / "data" / "papers.json").write_text(
+                json.dumps(
+                    {
+                        "papers": [
+                            {
+                                "id": "openalex:1",
+                                "title": "Candidate One",
+                                "year": 2025,
+                                "url": "https://example.com/1",
+                                "citation_count": 4,
+                                "abstract": "fairness in hiring systems",
+                                "topics": ["fairness"],
+                            },
+                            {
+                                "id": "openalex:2",
+                                "title": "Candidate Two",
+                                "year": 2025,
+                                "url": "https://example.com/2",
+                                "citation_count": 2,
+                                "abstract": "hiring workflow systems",
+                                "topics": ["workflow"],
+                            },
+                        ],
+                        "scout_runs": [
+                            {
+                                "date": "2026-06-13",
+                                "accepted_ids": ["openalex:1", "openalex:2"],
+                                "accepted_count": 2,
+                                "candidate_count": 10,
+                                "cost": {"token_count": 0, "money_cost_usd": 0.0, "currency": "USD"},
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (root / "data" / "candidates.json").write_text(
+                json.dumps({"generated_at": "2026-06-13T00:00:00Z", "candidates": []}),
+                encoding="utf-8",
+            )
+            env = dict(os.environ, TOPIC_SCOUT_ROOT=directory)
+            subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "build_dashboard.py")],
+                check=True,
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+            payload = json.loads((root / "data" / "dashboard.json").read_text())
+            self.assertEqual(len(payload["runs"]), 1)
+            self.assertIn("accepted_topic_counts", payload["runs"][0])
+            self.assertIn("cumulative_topics", payload["runs"][0])
+            self.assertIn("cumulative_topic_ratios", payload["runs"][0])
+            self.assertEqual(
+                sum(payload["runs"][0]["accepted_topic_counts"].values()),
+                payload["runs"][0]["accepted"],
+            )
+            self.assertEqual(
+                payload["runs"][0]["cumulative_topics"],
+                payload["runs"][0]["accepted_topic_counts"],
+            )
+            self.assertAlmostEqual(
+                sum(payload["runs"][0]["cumulative_topic_ratios"].values()),
+                1.0,
+            )
+
+    def test_scout_records_history_even_when_nothing_is_accepted(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env = dict(os.environ, TOPIC_SCOUT_ROOT=directory)
+            subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "init_topic.py"),
+                    "--topic", "AI theorem proving",
+                    "--goal", "Track proof systems",
+                    "--audience", "researchers",
+                    "--include", "proof search,formal verification",
+                    "--years", "2023-2026",
+                    "--taxonomy", "proof search,verification,benchmarks",
+                    "--offline",
+                ],
+                check=True,
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+            subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "scout.py")],
+                check=True,
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+            corpus = json.loads((Path(directory) / "data" / "papers.json").read_text())
+            self.assertEqual(len(corpus["scout_runs"]), 1)
+            self.assertEqual(corpus["scout_runs"][0]["accepted_count"], 0)
+            self.assertGreaterEqual(corpus["scout_runs"][0]["candidate_count"], 0)
 
     def test_intent_refinement_can_use_codex_subscription(self):
         refined = {
