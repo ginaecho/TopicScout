@@ -1,4 +1,4 @@
-# AI Topic Scout
+# Topic Scouting and Auto Dashboard Generation
 
 Turn any research question into a persistent, agent-operated paper intelligence workspace.
 
