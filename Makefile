@@ -20,7 +20,7 @@ init:
 	$(PYTHON) scripts/init_topic.py
 
 reset:
-	rm -rf AGENTS.md agents data/candidates.json data/dashboard.json \
+	rm -rf TOPIC_AGENTS.md agents data/candidates.json data/dashboard.json \
 		data/papers.json data/research_opportunities.json \
 		data/sequential_tasks.json data/claw_tasks.json data/swarm_tasks.json \
 		reports scout_cron_payload.txt skills/analyze-research-gaps \

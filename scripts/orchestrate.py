@@ -77,7 +77,7 @@ def emit(mode: str, config: dict) -> dict:
         "mode": mode,
         "topic": config["topic"],
         "coordinator_instruction": (
-            "Read AGENTS.md and topic.json. Assign only accepted research-contract tasks. "
+            "Read AGENTS.md, TOPIC_AGENTS.md, and topic.json. Assign only accepted research-contract tasks. "
             "Do not publish when no new paper is accepted."
         ),
         "tasks": tasks(config),

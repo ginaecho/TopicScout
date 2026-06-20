@@ -124,8 +124,9 @@ make test
 
 Generated workspace artifacts appear at the repository root:
 
-- `topic.json`
 - `AGENTS.md`
+- `TOPIC_AGENTS.md`
+- `topic.json`
 - `agents/*.md`
 - `skills/topic-paper-scout/SKILL.md`
 - `skills/analyze-research-gaps/SKILL.md`

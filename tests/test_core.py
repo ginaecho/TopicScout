@@ -90,7 +90,7 @@ class CoreTests(unittest.TestCase):
             )
             root = Path(directory)
             self.assertTrue((root / "topic.json").exists())
-            self.assertTrue((root / "AGENTS.md").exists())
+            self.assertTrue((root / "TOPIC_AGENTS.md").exists())
             self.assertTrue((root / "agents" / "graph-scout.md").exists())
             self.assertTrue((root / "skills" / "topic-paper-scout" / "SKILL.md").exists())
             topic = json.loads((root / "topic.json").read_text())
