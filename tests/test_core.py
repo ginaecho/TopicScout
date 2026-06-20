@@ -617,21 +617,22 @@ class CoreTests(unittest.TestCase):
                 stderr="",
             )
 
-        scores, cost = score_candidates_codex(
-            CONFIG,
-            [
-                {
-                    "id": "openalex:1",
-                    "title": "Formal proof search",
-                    "abstract": "Proof search with verifier feedback.",
-                    "topics": ["proof search"],
-                    "relevance_score": 1.0,
-                    "relevance_reason": "heuristic",
-                }
-            ],
-            cwd=ROOT,
-            run=fake_run,
-        )
+        with patch("scout_llm.shutil.which", return_value="/usr/local/bin/codex"):
+            scores, cost = score_candidates_codex(
+                CONFIG,
+                [
+                    {
+                        "id": "openalex:1",
+                        "title": "Formal proof search",
+                        "abstract": "Proof search with verifier feedback.",
+                        "topics": ["proof search"],
+                        "relevance_score": 1.0,
+                        "relevance_reason": "heuristic",
+                    }
+                ],
+                cwd=ROOT,
+                run=fake_run,
+            )
         self.assertIn("--json", captured["command"])
         self.assertEqual(scores["openalex:1"]["relevance_score"], 7.5)
         self.assertEqual(cost["token_count"], 230)
@@ -679,11 +680,12 @@ class CoreTests(unittest.TestCase):
             output_path.write_text(json.dumps(refined), encoding="utf-8")
             return subprocess.CompletedProcess(command, 0, "", "")
 
-        result, model = refine_intent_codex(
-            "raw sentence",
-            cwd=ROOT,
-            run=fake_run,
-        )
+        with patch("intent_refiner.shutil.which", return_value="/usr/local/bin/codex"):
+            result, model = refine_intent_codex(
+                "raw sentence",
+                cwd=ROOT,
+                run=fake_run,
+            )
         self.assertEqual(result["title"], refined["title"])
         self.assertEqual(model, "codex-cli:configured-model")
         self.assertIn("--ephemeral", captured["command"])
